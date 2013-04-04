@@ -1,0 +1,18 @@
+<package>
+  <description brief="falkor_gimbal">
+
+     falkor_gimbal
+
+  </description>
+  <author>Sameer Parekh</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/falkor_gimbal</url>
+  <depend package="falkor_drivers" />
+  <depend package="falkor_msgs" />
+  <depend package="geometry_msgs" />
+  <depend package="sensor_msgs" />
+  <depend package="cv_bridge" />
+</package>
+
+

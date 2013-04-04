@@ -1,0 +1,23 @@
+<launch>
+  <node pkg="falkor_drivers" type="pwm_pololu_driver.py" name="pwm_pololu_driver" >
+    <param name="port" value="/dev/ttyUSB0" />
+  </node>
+  <node pkg="falkor_gimbal" type="lynxmotion_driver.py" name="lynxmotion_driver" />
+<!--  <node pkg="falkor_gimbal" type="follow.py" name="follow" />  -->
+  <group ns="camera" >
+    <node pkg="image_view" type="image_view" name="rectified" >
+      <remap from="image" to="image_rect_color" />
+    </node>
+    <node pkg="image_view" type="image_view" name="tracked" >
+      <remap from="image" to="image_track_color" />
+    </node>
+    <node pkg="nodelet" type="nodelet" name="camera_node" args="manager" />
+    <node pkg="nodelet" type="nodelet" name="camera"
+	  args="load uvc_camera/CameraNodelet camera_node" >
+      <param name="camera_info_url" value="package://falkor_gimbal/calibrations/omni.yaml" />
+    </node>
+    <include file="$(find image_proc)/launch/image_proc.launch" >
+      <arg name="manager" value="camera_node" />
+    </include>
+  </group>
+</launch>
