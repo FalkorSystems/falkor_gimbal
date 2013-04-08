@@ -36,8 +36,8 @@ class Track:
         self.detector = cv2.SimpleBlobDetector( self.params ) 
         self.bridge = CvBridge()
 
-        self.minHue = 53
-        self.maxHue = 80
+        self.minHue = 35
+        self.maxHue = 90
 
         # cv2.namedWindow( "Controls" )
         # cv2.createTrackbar( "minArea", "Controls", int(self.params.minArea), 10000, self.update_minArea )
