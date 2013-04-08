@@ -12,16 +12,16 @@ import numpy as np
 class Follow:
     def __init__(self):
 
-
         self.pan_state = rospy.Subscriber( "pan_controller/state", JointState, self.pan_state_cb )
         self.tilt_state = rospy.Subscriber( "tilt_controller/state", JointState, self.tilt_state_cb )
 
         self.pan_pub = rospy.Publisher( "pan_controller/command", Float64 )
         self.tilt_pub = rospy.Publisher( "tilt_controller/command", Float64 )
 
-        rospy.sleep(2)
-        self.pan_pub.publish( 0 )
-        self.tilt_pub.publish( 0 )
+        rospy.sleep( 2 )
+        self.pan_pub.publish( Float64( 0.0 ) )
+        self.tilt_pub.publish( Float64( 0.0 ) )
+        rospy.sleep( 2 )
 
         self.camera_info = CameraInfo()
         self.camera_info_topic = rospy.get_param( "~camera_info_topic", "camera/camera_info" )
@@ -36,10 +36,10 @@ class Follow:
         self.found_point_sub = rospy.Subscriber( self.found_point_topic, Point, self.found_point_cb )
 
     def pan_state_cb( self, data ):
-        self.pan_pos = data.current_pos
+        self.pan_state = data
 
     def tilt_state_cb( self, data ):
-        self.tilt_pos = data.current_pos
+        self.tilt_state = data
 
     def camera_info_cb( self, data ):
         self.camera_info = data
@@ -66,11 +66,11 @@ class Follow:
         pan = -np.arctan2( self.found_point.x - width/2, f_x )
         tilt = np.arctan2( self.found_point.y - height/2, f_y )
 
-        pan_cmd = self.pan_pos + pan
-        tilt_cmd = self.tilt_pos + tilt
+        pan_goal = self.pan_state.current_pos + pan
+        tilt_goal = self.tilt_state.current_pos + tilt
 
-        self.pan_pub.publish( pan_cmd )
-        self.tilt_pub.publish( tilt_cmd )
+        self.pan_pub.publish( Float64( pan_goal ) )
+        self.tilt_pub.publish( Float64( tilt_goal ) )
 
     def run(self):
         rospy.spin()
