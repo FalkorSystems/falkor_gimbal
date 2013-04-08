@@ -5,21 +5,23 @@ import rospy
 from falkor_msgs.msg import *
 from geometry_msgs.msg import *
 from sensor_msgs.msg import *
+from dynamixel_msgs.msg import *
+from std_msgs.msg import *
 import numpy as np
-import pid
 
 class Follow:
     def __init__(self):
-        self.gimbal_cmd = Gimbal( 0, 0, 0 )
-        self.gimbal_topic = rospy.get_param( "~gimbal_topic", "gimbal_cmd" )
-        self.gimbal_pub = rospy.Publisher( self.gimbal_topic, Gimbal )
+
+
+        self.pan_state = rospy.Subscriber( "pan_controller/state", JointState, self.pan_state_cb )
+        self.tilt_state = rospy.Subscriber( "tilt_controller/state", JointState, self.tilt_state_cb )
+
+        self.pan_pub = rospy.Publisher( "pan_controller/command", Float64 )
+        self.tilt_pub = rospy.Publisher( "tilt_controller/command", Float64 )
 
         rospy.sleep(2)
-        self.gimbal_pub.publish( self.gimbal_cmd )
-
-
-        self.found_point_topic = rospy.get_param( "~found_point_topic", "found_point" )
-        self.found_point_sub = rospy.Subscriber( self.found_point_topic, Point, self.found_point_cb )
+        self.pan_pub.publish( 0 )
+        self.tilt_pub.publish( 0 )
 
         self.camera_info = CameraInfo()
         self.camera_info_topic = rospy.get_param( "~camera_info_topic", "camera/camera_info" )
@@ -28,14 +30,16 @@ class Follow:
         self.found_point = Point()
 
         # Run at Hz
-        self.rate = rospy.Rate( 20 )
+        self.gimbal_cmd_limit = np.pi
 
-        self.gimbal_move_limit = np.pi/40
-        self.yaw_pid = pid.Pid( 0.5, 0.0, 0.0, 0.0, self.gimbal_move_limit )
-        self.pitch_pid = pid.Pid( 0.5, 0.0, 0.0, 0.0, self.gimbal_move_limit )
+        self.found_point_topic = rospy.get_param( "~found_point_topic", "found_point" )
+        self.found_point_sub = rospy.Subscriber( self.found_point_topic, Point, self.found_point_cb )
 
-        self.gimbal_cmd_limit = np.pi/4
-        self.time = rospy.Time.now()
+    def pan_state_cb( self, data ):
+        self.pan_pos = data.current_pos
+
+    def tilt_state_cb( self, data ):
+        self.tilt_pos = data.current_pos
 
     def camera_info_cb( self, data ):
         self.camera_info = data
@@ -49,9 +53,9 @@ class Follow:
     def found_point_cb( self, data ):
         self.found_point = data
 
-    def run_once( self ):
         if self.found_point.x == -1:
             return
+
         f_x = self.camera_info.P[0]
         c_x = self.camera_info.P[2]
         f_y = self.camera_info.P[5]
@@ -59,31 +63,17 @@ class Follow:
         height = self.camera_info.height
         width = self.camera_info.width
 
-        yaw = -np.arctan2( self.found_point.x - width/2, f_x )
-        pitch = np.arctan2( self.found_point.y - height/2, f_y )
+        pan = -np.arctan2( self.found_point.x - width/2, f_x )
+        tilt = np.arctan2( self.found_point.y - height/2, f_y )
 
-        now = rospy.Time.now()
+        pan_cmd = self.pan_pos + pan
+        tilt_cmd = self.tilt_pos + tilt
 
-        dt = now - self.time
-        self.time = now
-        pitch_controlled = self.pitch_pid.update( pitch, 0, 0, dt.to_sec() )
-        yaw_controlled = self.yaw_pid.update( yaw, 0, 0, dt.to_sec() )
-
-        self.gimbal_cmd.pitch += pitch_controlled
-        self.gimbal_cmd.yaw += yaw_controlled
-
-        data = [ i / np.pi * 180 for i in ( pitch, yaw, pitch_controlled, yaw_controlled ) ]
-        print "(%3d, %3d) -> (%3d, %3d)" % tuple(data)
-
-        self.gimbal_cmd.pitch = self.limit_cmd( self.gimbal_cmd.pitch )
-        self.gimbal_cmd.yaw = self.limit_cmd( self.gimbal_cmd.yaw )
-
-        self.gimbal_pub.publish( self.gimbal_cmd )
+        self.pan_pub.publish( pan_cmd )
+        self.tilt_pub.publish( tilt_cmd )
 
     def run(self):
-        while not rospy.is_shutdown():
-            self.run_once()
-            self.rate.sleep()
+        rospy.spin()
 
 def main():
     rospy.init_node('follow')
