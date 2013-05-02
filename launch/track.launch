@@ -3,7 +3,7 @@
   <include file="$(find falkor_gimbal)/launch/spawner.launch" />
 
   <node pkg="falkor_gimbal" type="track.py" name="track" />
-  <node pkg="falkor_gimbal" type="follow.py" name="follow" /> 
+<!--  <node pkg="falkor_gimbal" type="follow.py" name="follow" />  -->
   <group ns="camera" >
     <node pkg="image_view" type="image_view" name="rectified" >
       <remap from="image" to="image_rect_color" />

@@ -5,6 +5,7 @@ import rospy
 from falkor_msgs.msg import *
 from geometry_msgs.msg import *
 from sensor_msgs.msg import *
+from std_msgs.msg import *
 import cv, cv2
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -12,7 +13,7 @@ import numpy as np
 
 class Track:
     def __init__(self):
-        self.found_point_pub = rospy.Publisher( "found_point", Point )
+        self.found_point_pub = rospy.Publisher( "found_point", PointStamped )
 
         self.params = cv2.SimpleBlobDetector_Params()
         # params.minDistBetweenBlobs = 10
@@ -142,8 +143,11 @@ class Track:
 
         numpy_image = np.asarray(cv_image)
 
-        found_point = self.track( numpy_image )
-        self.found_point_pub.publish( found_point )
+        point = self.track( numpy_image )
+        header = Header()
+        header.stamp = data.header.stamp
+        point_stamped = PointStamped( header, point )
+        self.found_point_pub.publish( point_stamped )
 
     def run(self):
         while not rospy.is_shutdown():

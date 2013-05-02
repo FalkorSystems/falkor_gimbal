@@ -29,11 +29,12 @@ class Follow:
 
         self.found_point = Point()
 
-        # Run at Hz
+        self.old_pan_goal_time = self.old_tilt_goal_time = None
+
         self.gimbal_cmd_limit = np.pi
 
         self.found_point_topic = rospy.get_param( "~found_point_topic", "found_point" )
-        self.found_point_sub = rospy.Subscriber( self.found_point_topic, Point, self.found_point_cb )
+        self.found_point_sub = rospy.Subscriber( self.found_point_topic, PointStamped, self.found_point_cb )
 
     def pan_state_cb( self, data ):
         self.pan_state = data
@@ -51,7 +52,8 @@ class Follow:
         return min( max( angle, -self.gimbal_cmd_limit ), self.gimbal_cmd_limit )
 
     def found_point_cb( self, data ):
-        self.found_point = data
+        self.found_point = data.point
+        time_now = rospy.Time.now()
 
         if self.found_point.x == -1:
             return
@@ -66,11 +68,33 @@ class Follow:
         pan = -np.arctan2( self.found_point.x - width/2, f_x )
         tilt = np.arctan2( self.found_point.y - height/2, f_y )
 
-        pan_goal = self.pan_state.current_pos + pan
-        tilt_goal = self.tilt_state.current_pos + tilt
+        dt_pan_state = time_now - self.pan_state.header.stamp
+        dt_tilt_state = time_now - self.tilt_state.header.stamp
 
-        self.pan_pub.publish( Float64( pan_goal ) )
-        self.tilt_pub.publish( Float64( tilt_goal ) )
+        pan_pos = self.pan_state.current_pos + self.pan_state.velocity * dt_pan_state.to_sec()
+        tilt_pos = self.tilt_state.current_pos + self.tilt_state.velocity * dt_tilt_state.to_sec()
+
+        pan_goal = pan_pos + pan
+        tilt_goal = tilt_pos + tilt
+
+        if self.old_pan_goal_time != None and self.old_tilt_goal_time != None:
+            pan_vel = ( pan_goal - self.old_pan_goal ) / ( data.header.stamp - self.old_pan_goal_time ).to_sec()
+            tilt_vel = ( tilt_goal - self.old_tilt_goal ) / ( data.header.stamp - self.old_tilt_goal_time ).to_sec()
+
+            final_pan_goal = pan_goal + pan_vel * ( time_now - data.header.stamp ).to_sec()
+            final_tilt_goal = tilt_goal + tilt_vel * ( time_now - data.header.stamp ).to_sec()
+        else:
+            final_pan_goal = pan_goal
+            final_tilt_goal = tilt_goal
+
+        self.old_pan_goal = pan_goal
+        self.old_pan_goal_time = data.header.stamp
+
+        self.old_tilt_goal = tilt_goal
+        self.old_tilt_goal_time = data.header.stamp
+
+        self.pan_pub.publish( Float64( self.limit_cmd( final_pan_goal ) ) )
+        self.tilt_pub.publish( Float64( self.limit_cmd( final_tilt_goal ) ) )
 
     def run(self):
         rospy.spin()
