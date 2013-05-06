@@ -13,7 +13,7 @@ tilt_pub = rospy.Publisher( "tilt_controller/command", Float64 )
 current_tilt = 0.0
 max_tilt = np.pi/4
 tilt_step = np.pi/32
-center_pause = 1
+center_pause = 5
 step_pause = 0.3
 direction = 1
 
