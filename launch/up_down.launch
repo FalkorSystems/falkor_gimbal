@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find falkor_gimbal)/launch/manager.launch" />
+  <include file="$(find falkor_gimbal)/launch/spawner_tilt.launch" />
+
+  <node pkg="falkor_gimbal" type="up_down.py" name="up_down" />
+</launch>

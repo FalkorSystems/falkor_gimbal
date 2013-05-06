@@ -1,6 +1,6 @@
 <launch>
   <include file="$(find falkor_gimbal)/launch/manager.launch" />
-  <include file="$(find falkor_gimbal)/launch/spawner.launch" />
+  <include file="$(find falkor_gimbal)/launch/spawner_both.launch" />
 
   <node pkg="falkor_gimbal" type="track.py" name="track" />
 <!--  <node pkg="falkor_gimbal" type="follow.py" name="follow" />  -->
